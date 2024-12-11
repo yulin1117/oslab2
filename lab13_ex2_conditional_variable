@@ -1,0 +1,112 @@
+#include <pthread.h>
+#include <stdio.h>
+#include <unistd.h>
+
+// 全域變數與條件變數
+int turn = 1;                       // 共享變數，決定輪到哪個執行緒輸出
+pthread_mutex_t mtx;                // Mutex
+pthread_cond_t cond1, cond2, cond3; // 三個條件變數
+
+void *print1(void *arg)
+{
+    while (1)
+    {
+        pthread_mutex_lock(&mtx);
+
+        // 等待輪到執行緒 T1
+        while (turn != 1)
+        {
+            pthread_cond_wait(&cond1, &mtx);
+        }
+
+        // 打印 1
+        printf("1 ");
+        fflush(stdout);
+
+        // 更新共享變數並喚醒 T2
+        turn = 2;
+        pthread_cond_signal(&cond2);
+
+        pthread_mutex_unlock(&mtx);
+    }
+    return NULL;
+}
+
+void *print3(void *arg)
+{
+    while (1)
+    {
+        pthread_mutex_lock(&mtx);
+
+        // 等待輪到執行緒 T2
+        while (turn != 2)
+        {
+            pthread_cond_wait(&cond2, &mtx);
+        }
+
+        // 打印 3
+        printf("3 ");
+        fflush(stdout);
+
+        // 更新共享變數並喚醒 T3
+        turn = 3;
+        pthread_cond_signal(&cond3);
+
+        pthread_mutex_unlock(&mtx);
+    }
+    return NULL;
+}
+
+void *print5(void *arg)
+{
+    while (1)
+    {
+        pthread_mutex_lock(&mtx);
+
+        // 等待輪到執行緒 T3
+        while (turn != 3)
+        {
+            pthread_cond_wait(&cond3, &mtx);
+        }
+
+        // 打印 5
+        printf("5 ");
+        fflush(stdout);
+
+        // 更新共享變數並喚醒 T1
+        turn = 1;
+        pthread_cond_signal(&cond1);
+
+        pthread_mutex_unlock(&mtx);
+    }
+    return NULL;
+}
+
+int main()
+{
+    pthread_t t1, t2, t3;
+
+    // 初始化 Mutex 和條件變數
+    pthread_mutex_init(&mtx, NULL);
+    pthread_cond_init(&cond1, NULL);
+    pthread_cond_init(&cond2, NULL);
+    pthread_cond_init(&cond3, NULL);
+
+    // 創建執行緒
+    pthread_create(&t1, NULL, print1, NULL);
+    pthread_create(&t2, NULL, print3, NULL);
+    pthread_create(&t3, NULL, print5, NULL);
+
+    // 等待執行緒結束（理論上不會結束，因此無需 join）
+    pthread_join(t1, NULL);
+    pthread_join(t2, NULL);
+    pthread_join(t3, NULL);
+
+    // 銷毀 Mutex 和條件變數
+    pthread_mutex_destroy(&mtx);
+    pthread_cond_destroy(&cond1);
+    pthread_cond_destroy(&cond2);
+    pthread_cond_destroy(&cond3);
+
+    return 0;
+}
