@@ -1,0 +1,87 @@
+// use mutex to prevent race condition
+// gcc -o ex1 ex1.c -lpthread
+#include <stdlib.h>
+#include <stdio.h>
+#include <pthread.h>
+
+// 全域變數與 Mutex
+static int glob = 0;        // 共享變數
+static pthread_mutex_t mtx; // Mutex 變數
+
+static void *addFunc(void *arg)
+{
+    int loops = *((int *)arg); // 取得傳遞的參數
+    int j;
+
+    for (j = 0; j < loops; j++)
+    {
+        pthread_mutex_lock(&mtx);   // 鎖定 Mutex
+        glob += 2;                  // 修改共享變數
+        pthread_mutex_unlock(&mtx); // 解鎖 Mutex
+    }
+
+    return NULL;
+}
+static void *subFunc(void *arg)
+{
+    int loops = *((int *)arg); // 取得傳遞的參數
+    int j;
+
+    for (j = 0; j < loops; j++)
+    {
+        pthread_mutex_lock(&mtx);   // 鎖定 Mutex
+        glob -= 2;                  // 修改共享變數
+        pthread_mutex_unlock(&mtx); // 解鎖 Mutex
+    }
+
+    return NULL;
+}
+int main(int argc, char *argv[])
+{
+    pthread_t t1, t2, t3; // 宣告兩個執行緒變數
+    int loops, s;
+
+    // 初始化 Mutex
+    pthread_mutex_init(&mtx, NULL);
+
+    loops = atoi(argv[1]); // 將命令列參數轉換為整數
+
+    // 建立執行緒
+    s = pthread_create(&t1, NULL, addFunc, &loops);
+    if (s != 0)
+    {
+        printf("pthread_create ERROR\n");
+    }
+    s = pthread_create(&t2, NULL, addFunc, &loops);
+    if (s != 0)
+    {
+        printf("pthread_create ERROR\n");
+    }
+    s = pthread_create(&t3, NULL, subFunc, &loops);
+    if (s != 0)
+    {
+        printf("pthread_create ERROR\n");
+    }
+    // 等待執行緒完成
+    s = pthread_join(t1, NULL);
+    if (s != 0)
+    {
+        printf("pthread_join ERROR\n");
+    }
+    s = pthread_join(t2, NULL);
+    if (s != 0)
+    {
+        printf("pthread_join ERROR\n");
+    }
+    s = pthread_join(t3, NULL);
+    if (s != 0)
+    {
+        printf("pthread_join ERROR\n");
+    }
+
+    // 銷毀 Mutex
+    pthread_mutex_destroy(&mtx);
+
+    printf("glob = %d\n", glob); // 打印共享變數的最終值
+    return 0;
+}
